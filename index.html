@@ -3,10 +3,102 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>AI图像工作室 - 抠图模块加载中</title>
+  <title>AI换脸修复版</title>
+  <style>
+    body { background: #111; color: white; text-align: center; font-family: sans-serif; padding: 40px; }
+    section { background: #222; padding: 20px; border-radius: 10px; width: 90%; max-width: 600px; margin: auto; }
+    button { margin-top: 10px; padding: 10px 20px; border: none; background: #4ecdc4; color: white; border-radius: 6px; cursor: pointer; }
+    img { margin-top: 20px; max-width: 100%; border-radius: 8px; }
+    input { margin: 5px; }
+  </style>
 </head>
-<body style="background:#111; color:white; font-family:sans-serif; text-align:center; padding:50px;">
-  <h1>✂️ AI图像工作室（第四模块：抠图+背景替换）</h1>
-  <p>打包中，请稍等，即将提供支持 remove.bg 实时抠图的完整网页版本。</p>
+<body>
+  <h1>🎭 AI换脸（修复上传问题）</h1>
+
+  <section>
+    <p>上传两张人脸图片：</p>
+    <input type="file" id="faceA" accept="image/*" />
+    <input type="file" id="faceB" accept="image/*" />
+    <br />
+    <button onclick="uploadAndSwap()">上传并换脸</button>
+    <p id="swapStatus">等待上传...</p>
+    <img id="faceResult" style="display:none;" />
+  </section>
+
+  <script>
+    const uploadKey = "public_W23MTD3bzUbxT6pP6Z6eVZzharqQ";
+    const replicateKey = "r8_RbeImSevv5mxwF6pNxETVBo6ROms3ra3erJRz";
+
+    async function uploadFile(file) {
+      try {
+        const res = await fetch("https://api.upload.io/v2/accounts/uploadio/uploads/binary", {
+          method: "POST",
+          headers: { "Authorization": uploadKey },
+          body: file
+        });
+        const data = await res.json();
+        if (data?.fileUrl) return data.fileUrl;
+        throw new Error("上传失败");
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function pollResult(url) {
+      while (true) {
+        const res = await fetch(url, {
+          headers: { "Authorization": "Token " + replicateKey }
+        });
+        const data = await res.json();
+        if (data?.status === "succeeded") return data.output;
+        if (data?.status === "failed") return null;
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    async function uploadAndSwap() {
+      const status = document.getElementById("swapStatus");
+      const resultImg = document.getElementById("faceResult");
+      const a = document.getElementById("faceA").files[0];
+      const b = document.getElementById("faceB").files[0];
+      if (!a || !b) return alert("请上传两张人脸图片");
+
+      status.textContent = "⬆️ 正在上传第1张图片...";
+      const urlA = await uploadFile(a);
+      if (!urlA) return status.textContent = "❌ 第1张上传失败";
+
+      status.textContent = "⬆️ 正在上传第2张图片...";
+      const urlB = await uploadFile(b);
+      if (!urlB) return status.textContent = "❌ 第2张上传失败";
+
+      status.textContent = "🤖 正在调用 AI 换脸模型...";
+
+      const predict = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Token " + replicateKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          version: "c43f6f013d7c4c13927a6212f96e4cf3d101f30be6509ff29468fddcbf7c8ef7",
+          input: {
+            target_image: urlA,
+            source_image: urlB,
+            mode: "face"
+          }
+        })
+      });
+
+      const data = await predict.json();
+      if (!data?.urls?.get) return status.textContent = "❌ 模型调用失败";
+
+      const outputUrl = await pollResult(data.urls.get);
+      if (!outputUrl) return status.textContent = "❌ 换脸失败";
+
+      resultImg.src = outputUrl;
+      resultImg.style.display = "block";
+      status.textContent = "✅ 换脸成功！";
+    }
+  </script>
 </body>
 </html>
