@@ -3,60 +3,156 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>AI 图像上传 + 图床接入</title>
+  <title>AI图像工作室 - 风格图 + AI换脸</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body { font-family: Arial; background: #121212; color: white; text-align: center; padding: 30px; }
-    section { background: #1e1e2f; border-radius: 10px; padding: 20px; max-width: 500px; margin: auto; }
+    section { background: #1e1e2f; border-radius: 10px; padding: 20px; max-width: 600px; margin: 30px auto; }
     input, button { margin-top: 10px; }
-    img { margin-top: 15px; max-width: 90%; border-radius: 6px; }
+    img { margin-top: 15px; max-width: 100%; border-radius: 6px; }
   </style>
 </head>
 <body>
-  <h1>🌐 AI 图像上传演示</h1>
-  <p>通过 Upload.io 上传图片并返回真实 URL</p>
+  <h1>🎨 AI图像工作室</h1>
+  <p>包含：风格图生成 + AI换脸</p>
 
   <section>
+    <h2>🌈 风格图生成</h2>
     <input type="file" id="fileInput" accept="image/*" />
-    <br />
-    <button onclick="uploadImage()">上传图片</button>
-    <p id="uploadStatus">等待上传...</p>
-    <img id="preview" src="" style="display:none;" />
-    <p id="urlOutput" style="font-size:small;"></p>
+    <button onclick="uploadAndGenerate()">上传并生成</button>
+    <p id="status">等待上传...</p>
+    <img id="outputImage" src="" style="display:none;" />
+  </section>
+
+  <section>
+    <h2>🎭 AI换脸</h2>
+    <input type="file" id="faceA" accept="image/*" />
+    <input type="file" id="faceB" accept="image/*" />
+    <button onclick="uploadAndSwap()">上传并换脸</button>
+    <p id="swapStatus">等待上传...</p>
+    <img id="faceResult" src="" style="display:none;" />
   </section>
 
   <script>
-    async function uploadImage() {
-      const input = document.getElementById('fileInput');
-      const file = input.files[0];
-      const status = document.getElementById('uploadStatus');
-      const preview = document.getElementById('preview');
-      const urlOutput = document.getElementById('urlOutput');
+    const uploadApi = "https://api.upload.io/v2/accounts/uploadio/uploads/binary";
+    const uploadKey = "public_W23MTD3bzUbxT6pP6Z6eVZzharqQ";
+    const replicateKey = "r8_RbeImSevv5mxwF6pNxETVBo6ROms3ra3erJRz";
 
-      if (!file) {
-        alert("请先选择一张图片");
-        return;
-      }
+    async function uploadAndGenerate() {
+      const file = document.getElementById('fileInput').files[0];
+      const status = document.getElementById('status');
+      const output = document.getElementById('outputImage');
+      if (!file) return alert("请上传图片");
 
       status.textContent = "🚀 正在上传...";
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("https://api.upload.io/v2/accounts/uploadio/uploads/binary", {
+      const res = await fetch(uploadApi, {
         method: "POST",
-        headers: { "Authorization": "public_W23MTD3bzUbxT6pP6Z6eVZzharqQ" },
+        headers: { "Authorization": uploadKey },
         body: file
       });
-
       const data = await res.json();
-      if (data?.fileUrl) {
-        preview.src = data.fileUrl;
-        preview.style.display = "block";
-        urlOutput.textContent = "图片链接：" + data.fileUrl;
-        status.textContent = "✅ 上传成功";
-      } else {
-        status.textContent = "❌ 上传失败";
+      if (!data?.fileUrl) return status.textContent = "❌ 上传失败";
+
+      const imgUrl = data.fileUrl;
+      status.textContent = "🎨 正在生成风格图...";
+
+      const predict = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Token " + replicateKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          version: "db21e45b37db63992d4c99f6cbefccafe1c0fdfda12e1c04f835c2a3a0c37317",
+          input: {
+            image: imgUrl,
+            prompt: "cyberpunk portrait, trending on artstation, cinematic lighting",
+            num_outputs: 1
+          }
+        })
+      });
+
+      const prediction = await predict.json();
+      const pollUrl = prediction?.urls?.get;
+      if (!pollUrl) return status.textContent = "❌ 模型调用失败";
+
+      let result = "";
+      while (!result) {
+        const poll = await fetch(pollUrl, {
+          headers: { "Authorization": "Token " + replicateKey }
+        });
+        const pollData = await poll.json();
+        if (pollData?.status === "succeeded") {
+          result = pollData.output?.[0];
+          break;
+        }
+        await new Promise(r => setTimeout(r, 2000));
       }
+
+      output.src = result;
+      output.style.display = "block";
+      status.textContent = "✅ 风格图已生成";
+    }
+
+    async function uploadAndSwap() {
+      const a = document.getElementById('faceA').files[0];
+      const b = document.getElementById('faceB').files[0];
+      const status = document.getElementById('swapStatus');
+      const resultImg = document.getElementById('faceResult');
+      if (!a || !b) return alert("请上传两张人脸");
+
+      status.textContent = "⬆️ 上传人脸图像中...";
+
+      const upload = async file => {
+        const res = await fetch(uploadApi, {
+          method: "POST",
+          headers: { "Authorization": uploadKey },
+          body: file
+        });
+        return (await res.json()).fileUrl;
+      };
+
+      const urlA = await upload(a);
+      const urlB = await upload(b);
+
+      status.textContent = "🤖 正在调用换脸模型...";
+
+      const predict = await fetch("https://api.replicate.com/v1/predictions", {
+        method: "POST",
+        headers: {
+          "Authorization": "Token " + replicateKey,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          version: "c43f6f013d7c4c13927a6212f96e4cf3d101f30be6509ff29468fddcbf7c8ef7",
+          input: {
+            target_image: urlA,
+            source_image: urlB,
+            mode: "face"
+          }
+        })
+      });
+
+      const prediction = await predict.json();
+      const pollUrl = prediction?.urls?.get;
+      if (!pollUrl) return status.textContent = "❌ 模型调用失败";
+
+      let result = "";
+      while (!result) {
+        const poll = await fetch(pollUrl, {
+          headers: { "Authorization": "Token " + replicateKey }
+        });
+        const pollData = await poll.json();
+        if (pollData?.status === "succeeded") {
+          result = pollData.output;
+          break;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      resultImg.src = result;
+      resultImg.style.display = "block";
+      status.textContent = "✅ 换脸成功";
     }
   </script>
 </body>
