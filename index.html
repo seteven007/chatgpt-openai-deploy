@@ -2,62 +2,61 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>AI图像工作室 - 风格转换 + 换脸</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>AI 图像上传 + 图床接入</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: Arial; background: #111; color: #eee; text-align: center; padding: 30px; }
-    section { background: #222; padding: 20px; border-radius: 10px; margin: 30px auto; max-width: 600px; }
-    button { padding: 10px 20px; margin-top: 10px; background: #4ecdc4; color: white; border: none; border-radius: 6px; cursor: pointer; }
-    img { margin-top: 10px; max-width: 100%; border-radius: 6px; }
-    input[type="file"] { margin-top: 10px; }
+    body { font-family: Arial; background: #121212; color: white; text-align: center; padding: 30px; }
+    section { background: #1e1e2f; border-radius: 10px; padding: 20px; max-width: 500px; margin: auto; }
+    input, button { margin-top: 10px; }
+    img { margin-top: 15px; max-width: 90%; border-radius: 6px; }
   </style>
 </head>
 <body>
-  <h1>✨ AI图像工作室</h1>
-  <p>包含：风格转换 + AI换脸（使用真实 Replicate API 框架）</p>
+  <h1>🌐 AI 图像上传演示</h1>
+  <p>通过 Upload.io 上传图片并返回真实 URL</p>
 
   <section>
-    <h2>🎨 风格转换</h2>
-    <input type="file" id="styleImage" accept="image/*" />
-    <button onclick="convertStyle()">生成风格图</button>
-    <img id="styleResult" style="display:none" />
-  </section>
-
-  <section>
-    <h2>🎭 AI换脸</h2>
-    <input type="file" id="faceA" accept="image/*" />
-    <input type="file" id="faceB" accept="image/*" />
-    <button onclick="swapFaces()">生成换脸图</button>
-    <img id="faceResult" style="display:none" />
+    <input type="file" id="fileInput" accept="image/*" />
+    <br />
+    <button onclick="uploadImage()">上传图片</button>
+    <p id="uploadStatus">等待上传...</p>
+    <img id="preview" src="" style="display:none;" />
+    <p id="urlOutput" style="font-size:small;"></p>
   </section>
 
   <script>
-    const token = "r8_RbeImSevv5mxwF6pNxETVBo6ROms3ra3erJRz";
+    async function uploadImage() {
+      const input = document.getElementById('fileInput');
+      const file = input.files[0];
+      const status = document.getElementById('uploadStatus');
+      const preview = document.getElementById('preview');
+      const urlOutput = document.getElementById('urlOutput');
 
-    async function convertStyle() {
-      const file = document.getElementById("styleImage").files[0];
-      if (!file) return alert("请上传图片");
+      if (!file) {
+        alert("请先选择一张图片");
+        return;
+      }
 
-      const reader = new FileReader();
-      reader.onload = async () => {
-        alert("🎨 正在调用 Stable Diffusion 接口生成风格图...");
-        const result = document.getElementById("styleResult");
-        result.src = "https://placekitten.com/401/300?style";
-        result.style.display = "block";
-      };
-      reader.readAsDataURL(file);
-    }
+      status.textContent = "🚀 正在上传...";
+      const formData = new FormData();
+      formData.append("file", file);
 
-    async function swapFaces() {
-      const a = document.getElementById("faceA").files[0];
-      const b = document.getElementById("faceB").files[0];
-      if (!a || !b) return alert("请上传两张图");
+      const res = await fetch("https://api.upload.io/v2/accounts/uploadio/uploads/binary", {
+        method: "POST",
+        headers: { "Authorization": "public_W23MTD3bzUbxT6pP6Z6eVZzharqQ" },
+        body: file
+      });
 
-      alert("🎭 正在调用 FaceFusion 模型生成换脸图...");
-      const result = document.getElementById("faceResult");
-      result.src = "https://placekitten.com/402/300?face";
-      result.style.display = "block";
+      const data = await res.json();
+      if (data?.fileUrl) {
+        preview.src = data.fileUrl;
+        preview.style.display = "block";
+        urlOutput.textContent = "图片链接：" + data.fileUrl;
+        status.textContent = "✅ 上传成功";
+      } else {
+        status.textContent = "❌ 上传失败";
+      }
     }
   </script>
 </body>
