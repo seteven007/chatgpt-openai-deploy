@@ -3,23 +3,44 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>AI图像工作室 - 完整功能版</title>
+  <title>AI 图像工作室（可上传 + 预览）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; background: #1b1b2f; color: white; text-align: center; padding: 30px; }
+    h1 { color: #4ecdc4; }
+    section { background: #2a2a40; border-radius: 10px; margin: 30px auto; padding: 20px; max-width: 500px; }
+    input[type="file"], button { margin: 10px; }
+    img { margin-top: 10px; max-width: 100%; border-radius: 8px; border: 1px solid #555; }
+  </style>
 </head>
 <body>
-  <h1>🎉 欢迎使用 AI 图像工作室</h1>
-  <p>这是最新版 index.html 示例。包含所有模块入口：</p>
-  <ul>
-    <li>✂️ 抠图</li>
-    <li>🎨 风格转换</li>
-    <li>🎭 AI换脸</li>
-    <li>👗 智能换衣</li>
-    <li>👥 虚拟双胞胎</li>
-    <li>🖼️ 证件照</li>
-    <li>😃 表情生成</li>
-    <li>🛍️ 电商图优化</li>
-    <li>🐶 人宠换脸</li>
-    <li>🧠 智能推荐 + 历史记录</li>
-  </ul>
-  <p>请在正式发布版本中替换为真实集成后的 HTML。</p>
+  <h1>✨ AI 图像工作室</h1>
+  <p>上传图片，预览处理效果（演示功能）</p>
+
+  <section>
+    <h2>🎨 图像上传预览</h2>
+    <input type="file" id="imageInput" accept="image/*">
+    <br>
+    <button onclick="previewImage()">点击预览</button>
+    <img id="preview" src="" style="display:none;" />
+  </section>
+
+  <script>
+    function previewImage() {
+      const input = document.getElementById('imageInput');
+      const file = input.files[0];
+      const preview = document.getElementById('preview');
+      if (!file) {
+        alert('请先选择图片');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
 </body>
 </html>
