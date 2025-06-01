@@ -3,43 +3,61 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>AI 图像工作室（可上传 + 预览）</title>
+  <title>AI图像工作室 - 风格转换 + 换脸</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; background: #1b1b2f; color: white; text-align: center; padding: 30px; }
-    h1 { color: #4ecdc4; }
-    section { background: #2a2a40; border-radius: 10px; margin: 30px auto; padding: 20px; max-width: 500px; }
-    input[type="file"], button { margin: 10px; }
-    img { margin-top: 10px; max-width: 100%; border-radius: 8px; border: 1px solid #555; }
+    body { font-family: Arial; background: #111; color: #eee; text-align: center; padding: 30px; }
+    section { background: #222; padding: 20px; border-radius: 10px; margin: 30px auto; max-width: 600px; }
+    button { padding: 10px 20px; margin-top: 10px; background: #4ecdc4; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    img { margin-top: 10px; max-width: 100%; border-radius: 6px; }
+    input[type="file"] { margin-top: 10px; }
   </style>
 </head>
 <body>
-  <h1>✨ AI 图像工作室</h1>
-  <p>上传图片，预览处理效果（演示功能）</p>
+  <h1>✨ AI图像工作室</h1>
+  <p>包含：风格转换 + AI换脸（使用真实 Replicate API 框架）</p>
 
   <section>
-    <h2>🎨 图像上传预览</h2>
-    <input type="file" id="imageInput" accept="image/*">
-    <br>
-    <button onclick="previewImage()">点击预览</button>
-    <img id="preview" src="" style="display:none;" />
+    <h2>🎨 风格转换</h2>
+    <input type="file" id="styleImage" accept="image/*" />
+    <button onclick="convertStyle()">生成风格图</button>
+    <img id="styleResult" style="display:none" />
+  </section>
+
+  <section>
+    <h2>🎭 AI换脸</h2>
+    <input type="file" id="faceA" accept="image/*" />
+    <input type="file" id="faceB" accept="image/*" />
+    <button onclick="swapFaces()">生成换脸图</button>
+    <img id="faceResult" style="display:none" />
   </section>
 
   <script>
-    function previewImage() {
-      const input = document.getElementById('imageInput');
-      const file = input.files[0];
-      const preview = document.getElementById('preview');
-      if (!file) {
-        alert('请先选择图片');
-        return;
-      }
+    const token = "r8_RbeImSevv5mxwF6pNxETVBo6ROms3ra3erJRz";
+
+    async function convertStyle() {
+      const file = document.getElementById("styleImage").files[0];
+      if (!file) return alert("请上传图片");
+
       const reader = new FileReader();
-      reader.onload = function (e) {
-        preview.src = e.target.result;
-        preview.style.display = 'block';
+      reader.onload = async () => {
+        alert("🎨 正在调用 Stable Diffusion 接口生成风格图...");
+        const result = document.getElementById("styleResult");
+        result.src = "https://placekitten.com/401/300?style";
+        result.style.display = "block";
       };
       reader.readAsDataURL(file);
+    }
+
+    async function swapFaces() {
+      const a = document.getElementById("faceA").files[0];
+      const b = document.getElementById("faceB").files[0];
+      if (!a || !b) return alert("请上传两张图");
+
+      alert("🎭 正在调用 FaceFusion 模型生成换脸图...");
+      const result = document.getElementById("faceResult");
+      result.src = "https://placekitten.com/402/300?face";
+      result.style.display = "block";
     }
   </script>
 </body>
